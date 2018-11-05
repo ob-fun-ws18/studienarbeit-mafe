@@ -3,6 +3,7 @@ module Server (
 ) where
 
 import Network.Socket
+import System.IO
 
 startServer :: PortNumber -> IO ()
 startServer port = do
@@ -20,5 +21,7 @@ serverLoop sock = do
 
 handleConn :: (Socket, SockAddr) -> IO ()
 handleConn (sock, _) = do
-    send sock "Hello World!\n"
-    close sock
+    hdl <- socketToHandle sock ReadWriteMode
+    hSetBuffering hdl NoBuffering
+    hPutStrLn hdl "Hello World!"
+    hClose hdl
