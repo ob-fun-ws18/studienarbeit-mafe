@@ -4,6 +4,7 @@ module Server (
 
 import Network.Socket
 import System.IO
+import Control.Concurrent
 
 startServer :: PortNumber -> IO ()
 startServer port = do
@@ -16,7 +17,7 @@ startServer port = do
 serverLoop :: Socket -> IO ()
 serverLoop sock = do
     conn <- accept sock
-    handleConn conn
+    forkIO (handleConn conn)
     serverLoop sock
 
 handleConn :: (Socket, SockAddr) -> IO ()
