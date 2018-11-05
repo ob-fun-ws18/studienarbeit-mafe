@@ -38,3 +38,14 @@ install:
 script:
 # Build the package, its tests, and its docs and run the tests
 - stack --no-terminal test --haddock --no-haddock-deps
+- ln -s ‘stack path --local-doc-root‘ docs
+
+deploy:
+  provider: pages # speziell für GitHub Pages
+  skip_cleanup: true # der Branch soll ٗ**nicht ٗ** vorher gelöscht werden
+  github_token: $GITHUB_TOKEN # das Token damit der Travis das darf,
+  # soll nicht in den Logs stehen, daher Variable
+  on:
+    branch: master # auch wenn alle Branches gebaut werden, deployed werden
+                  # soll nur vom master
+  local_dir: docs # in den Branch soll nur die Haddock-Dokumentation
