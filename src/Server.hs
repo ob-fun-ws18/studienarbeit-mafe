@@ -5,6 +5,7 @@ module Server (
 import Network.Socket
 import System.IO
 import Control.Concurrent
+import Data.List
 
 startServer :: PortNumber -> IO ()
 startServer port = do
@@ -24,5 +25,18 @@ handleConn :: (Socket, SockAddr) -> IO ()
 handleConn (sock, _) = do
     hdl <- socketToHandle sock ReadWriteMode
     hSetBuffering hdl NoBuffering
-    hPutStrLn hdl "Hello World!"
+    getUser hdl ""
     hClose hdl
+
+getUser :: Handle -> String -> IO ()
+getUser hdl nick = do
+    line <- hGetLine hdl
+    if isPrefixOf "NICK" line then
+        let Just name = stripPrefix "NICK " line
+        in getUser hdl name
+    else if isPrefixOf "USER" line then do
+        hPutStrLn hdl (":bar.expample.com 001 " ++ nick ++ " :Welcome to the Internet Relay Network " ++ nick ++ "!" ++ nick ++ "@foo.example.com")
+        getUser hdl nick
+        else do
+            hPutStrLn hdl (":bar.expample.com PRIVMSG " ++ nick ++ " :" ++ line)
+            getUser hdl nick
