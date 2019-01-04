@@ -47,5 +47,5 @@ startConn (sock, _) chan = do
 loopConn :: Handle -> Chan Event -> User -> IO ()
 loopConn hdl chan user = do
     line <- hGetLine hdl
-    writeChan chan (ClientMsg (parseMsg line))
+    writeChan chan $ ClientMsg $ parseMsg $ init line
     loopConn hdl chan user
