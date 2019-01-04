@@ -7,9 +7,12 @@ import System.IO
 import Control.Concurrent
 import Data.List
 
-type Event = String
-type Msg = String
-type User = String
+import Client
+import User
+
+data Event = ClientMsg Msg
+    deriving Show
+
 type Channel = String
 
 startServer :: PortNumber -> IO ()
@@ -30,19 +33,19 @@ acceptConnections sock chan = do
 
 mainServer :: Chan Event -> [User] -> [Channel] -> IO ()
 mainServer chan users channels = do
-    msg <- (readChan chan)
-    putStrLn msg
+    event <- (readChan chan)
+    putStrLn $ show event
     mainServer chan users channels
 
 startConn :: (Socket, SockAddr) -> Chan Event -> IO ()
 startConn (sock, _) chan = do
     hdl <- socketToHandle sock ReadWriteMode
     hSetBuffering hdl NoBuffering
-    loopConn hdl chan
+    loopConn hdl chan NoUser
     hClose hdl
 
-loopConn :: Handle -> Chan Event -> IO ()
-loopConn hdl chan = do
+loopConn :: Handle -> Chan Event -> User -> IO ()
+loopConn hdl chan user = do
     line <- hGetLine hdl
-    writeChan chan line
-    loopConn hdl chan
+    writeChan chan (ClientMsg (parseMsg line))
+    loopConn hdl chan user
