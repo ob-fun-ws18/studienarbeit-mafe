@@ -1,10 +1,11 @@
 module Client (
-      Msg
+      Msg(..)
     , parseMsg
     ) where
 
 data Msg = Plain String
-    deriving Show
+        | Nick String
+    deriving (Show, Eq)
 
 parseMsg :: String -> Msg
 parseMsg str = Plain str
