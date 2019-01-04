@@ -7,36 +7,45 @@ import System.IO
 import Control.Concurrent
 import Data.List
 
+import Client
+import User
+
+data Event = ClientMsg Msg
+    deriving Show
+
+type Channel = String
+
 startServer :: PortNumber -> IO ()
 startServer port = do
     sock <- socket AF_INET Stream 0
     setSocketOption sock ReuseAddr 1
     bind sock (SockAddrInet port iNADDR_ANY)
     listen sock 2
-    serverLoop sock
+    chan <- newChan
+    forkIO (mainServer chan [] [])
+    acceptConnections sock chan
 
-serverLoop :: Socket -> IO ()
-serverLoop sock = do
+acceptConnections :: Socket -> Chan Event -> IO ()
+acceptConnections sock chan = do
     conn <- accept sock
-    forkIO (handleConn conn)
-    serverLoop sock
+    forkIO (startConn conn chan)
+    acceptConnections sock chan
 
-handleConn :: (Socket, SockAddr) -> IO ()
-handleConn (sock, _) = do
+mainServer :: Chan Event -> [User] -> [Channel] -> IO ()
+mainServer chan users channels = do
+    event <- (readChan chan)
+    putStrLn $ show event
+    mainServer chan users channels
+
+startConn :: (Socket, SockAddr) -> Chan Event -> IO ()
+startConn (sock, _) chan = do
     hdl <- socketToHandle sock ReadWriteMode
     hSetBuffering hdl NoBuffering
-    getUser hdl ""
+    loopConn hdl chan NoUser
     hClose hdl
 
-getUser :: Handle -> String -> IO ()
-getUser hdl nick = do
+loopConn :: Handle -> Chan Event -> User -> IO ()
+loopConn hdl chan user = do
     line <- hGetLine hdl
-    if isPrefixOf "NICK" line then
-        let Just name = stripPrefix "NICK " line
-        in getUser hdl name
-    else if isPrefixOf "USER" line then do
-        hPutStrLn hdl (":bar.expample.com 001 " ++ nick ++ " :Welcome to the Internet Relay Network " ++ nick ++ "!" ++ nick ++ "@foo.example.com")
-        getUser hdl nick
-        else do
-            hPutStrLn hdl (":bar.expample.com PRIVMSG " ++ nick ++ " :" ++ line)
-            getUser hdl nick
+    writeChan chan (ClientMsg (parseMsg line))
+    loopConn hdl chan user
