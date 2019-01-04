@@ -13,3 +13,9 @@ stack build
 ```sh
 stack exec IRCServer-exe
 ```
+
+## Responsibilities
+### Marita Segl
+- Parser
+### Felix Maurer
+- Grundlegende Server-Struktur
