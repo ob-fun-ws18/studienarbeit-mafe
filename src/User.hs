@@ -1,7 +1,13 @@
 module User (
       User(..)
+    , toString
     ) where
 
-data User = User String
+data User = FullUser String String String
+        | NickUser String
         | NoUser
     deriving Show
+
+toString :: User -> String
+toString (FullUser nick user _) = nick ++ ":" ++ user ++ "@localhost"
+toString _ = "no:full@user"

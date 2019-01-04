@@ -11,6 +11,7 @@ data Msg = Plain String
         | PrivMsg String String
         | Join String
         | Part String String
+        | Ping String
     deriving (Show, Eq)
 
 parseMsg :: String -> Msg
@@ -27,4 +28,5 @@ parseCommand "PRIVMSG " after = PrivMsg (head groups) msg
 parseCommand "JOIN " channel = Join channel
 parseCommand "PART " after = Part (head groups) msg
         where (_, _, msg, groups) = after =~ "^(\\S+)\\s:" :: (String, String, String, [String])
+parseCommand "PING " server = Ping server
 parseCommand cmd after = Plain (cmd ++ after)
