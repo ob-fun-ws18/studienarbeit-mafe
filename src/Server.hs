@@ -56,7 +56,9 @@ handleEvent users channels (ClientMsg user@(FullUser nick _ _) (Ping server)) = 
     sendToUser users nick "PONG localhost"
     return (users, channels)
 handleEvent users channels (ClientMsg user msg@(PrivMsg receiver _)) = do
-    sendToUser users receiver $ buildMsg user msg
+    if head receiver == '#'
+        then sendToAllUsers users (Map.findWithDefault [] receiver channels) (buildMsg user msg)
+        else sendToUser users receiver $ buildMsg user msg
     return (users, channels)
 handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Join channel)) = do
     let members = nick : (Map.findWithDefault [] channel channels)
