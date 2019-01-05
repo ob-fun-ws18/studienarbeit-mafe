@@ -1,9 +1,11 @@
 module Client (
       Msg(..)
     , parseMsg
+    , buildMsg
     ) where
 
 import Text.Regex.PCRE
+import User
 
 data Msg = Plain String
         | Nick String
@@ -13,6 +15,11 @@ data Msg = Plain String
         | Part String String
         | Ping String
     deriving (Show, Eq)
+
+buildMsg :: User -> Msg -> String
+buildMsg user (PrivMsg receiver msg) = ":" ++ toString user ++ " PRIVMSG " ++ receiver ++ " :" ++ msg
+buildMsg user (Join channel) = toString user ++ " JOIN " ++ channel
+buildMsg user (Part channel msg) = toString user ++ " PART " ++ channel ++ " :" ++ msg
 
 parseMsg :: String -> Msg
 parseMsg str = parseCommand cmd after

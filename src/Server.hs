@@ -53,10 +53,31 @@ handleEvent users channels (NewUser user@(FullUser nick username name) hdl) = do
     hPutStrLn hdl (":localhost 001 " ++ nick ++ " :Welcome to the Internet Relay Network " ++ toString user)
     return (new_users, channels)
 handleEvent users channels (ClientMsg user@(FullUser nick _ _) (Ping server)) = do
-    hPutStrLn (users ! nick) "PONG localhost"
+    sendToUser users nick "PONG localhost"
     return (users, channels)
+handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(PrivMsg receiver _)) = do
+    if head receiver == '#'
+        then do
+            let receivers = filter ((/=) nick) (Map.findWithDefault [] receiver channels)
+            sendToAllUsers users receivers (buildMsg user msg)
+        else sendToUser users receiver $ buildMsg user msg
+    return (users, channels)
+handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Join channel)) = do
+    let members = nick : (Map.findWithDefault [] channel channels)
+        new_channels = Map.insert channel members channels
+    sendToAllUsers users members $ buildMsg user msg
+    return (users, new_channels)
 handleEvent users channels _ = do
     return (users, channels)
+
+sendToUser :: Users -> String -> String -> IO ()
+sendToUser users nick msg = hPutStrLn (users ! nick) msg
+
+sendToAllUsers :: Users -> [String] -> String -> IO ()
+sendToAllUsers _ [] _ = return ()
+sendToAllUsers users receivers msg = do
+    sendToUser users (head receivers) msg
+    sendToAllUsers users (tail receivers) msg
 
 startConn :: (Socket, SockAddr) -> Chan Event -> IO ()
 startConn (sock, _) chan = do
