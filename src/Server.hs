@@ -67,6 +67,11 @@ handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Join channel
         new_channels = Map.insert channel members channels
     sendToAllUsers users members $ buildMsg user msg
     return (users, new_channels)
+handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Part channel _)) = do
+    let members = Map.findWithDefault [] channel channels
+    sendToAllUsers users members $ buildMsg user msg
+    let new_channels = Map.insert channel (filter ((/=) nick) members) channels
+    return (users, new_channels)
 handleEvent users channels _ = do
     return (users, channels)
 

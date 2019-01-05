@@ -18,8 +18,8 @@ data Msg = Plain String
 
 buildMsg :: User -> Msg -> String
 buildMsg user (PrivMsg receiver msg) = ":" ++ toString user ++ " PRIVMSG " ++ receiver ++ " :" ++ msg
-buildMsg user (Join channel) = toString user ++ " JOIN " ++ channel
-buildMsg user (Part channel msg) = toString user ++ " PART " ++ channel ++ " :" ++ msg
+buildMsg user (Join channel) = ":" ++ toString user ++ " JOIN " ++ channel
+buildMsg user (Part channel msg) = ":" ++ toString user ++ " PART " ++ channel ++ " :" ++ msg
 
 parseMsg :: String -> Msg
 parseMsg str = parseCommand cmd after
@@ -33,7 +33,9 @@ parseCommand "USER " after = User user $ tail name
 parseCommand "PRIVMSG " after = PrivMsg (head groups) msg
         where (_, _, msg, groups) = after =~ "^(\\S+)\\s:" :: (String, String, String, [String])
 parseCommand "JOIN " channel = Join channel
-parseCommand "PART " after = Part (head groups) msg
+parseCommand "PART " after
+        | after =~ "^(\\S+)\\s:" = Part (head groups) msg
+        | otherwise = Part after ""
         where (_, _, msg, groups) = after =~ "^(\\S+)\\s:" :: (String, String, String, [String])
 parseCommand "PING " server = Ping server
 parseCommand cmd after = Plain (cmd ++ after)
