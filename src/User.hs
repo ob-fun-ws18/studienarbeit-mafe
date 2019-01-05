@@ -9,5 +9,5 @@ data User = FullUser String String String
     deriving Show
 
 toString :: User -> String
-toString (FullUser nick user _) = nick ++ ":" ++ user ++ "@localhost"
-toString _ = "no:full@user"
+toString (FullUser nick user _) = nick ++ "!" ++ user ++ "@localhost"
+toString _ = "no!full@user"

@@ -55,6 +55,9 @@ handleEvent users channels (NewUser user@(FullUser nick username name) hdl) = do
 handleEvent users channels (ClientMsg user@(FullUser nick _ _) (Ping server)) = do
     hPutStrLn (users ! nick) "PONG localhost"
     return (users, channels)
+handleEvent users channels (ClientMsg user (PrivMsg receiver msg)) = do
+    hPutStrLn (users ! receiver) (":" ++ toString user ++ " PRIVMSG " ++ receiver ++ " :" ++ msg)
+    return (users, channels)
 handleEvent users channels _ = do
     return (users, channels)
 
