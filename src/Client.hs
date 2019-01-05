@@ -1,9 +1,11 @@
 module Client (
       Msg(..)
     , parseMsg
+    , buildMsg
     ) where
 
 import Text.Regex.PCRE
+import User
 
 data Msg = Plain String
         | Nick String
