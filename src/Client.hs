@@ -14,6 +14,9 @@ data Msg = Plain String
         | Ping String
     deriving (Show, Eq)
 
+buildMsg :: User -> Msg -> String
+buildMsg user (PrivMsg receiver msg) = (":" ++ toString user ++ " PRIVMSG " ++ receiver ++ " :" ++ msg)
+
 parseMsg :: String -> Msg
 parseMsg str = parseCommand cmd after
         where (_, cmd, after) = str =~ "^[A-Z]+ " :: (String, String, String)
