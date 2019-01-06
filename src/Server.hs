@@ -79,6 +79,10 @@ handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Quit _)) = d
     hClose hdl
     sendToAllUsers users (Map.keys new_users) (buildMsg user msg)
     return (new_users , new_channels)
+handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(IsOn nicks)) = do
+    let usersOn = filter (\x -> Map.member x users) nicks
+    sendToUser users nick $ buildMsg user (IsOn usersOn)
+    return (users, channels)
 handleEvent users channels _ = do
     return (users, channels)
 
