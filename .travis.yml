@@ -37,8 +37,9 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --haddock --no-haddock-deps
+- stack --no-terminal test --haddock --no-haddock-deps --coverage
 - ln -s `stack path --local-doc-root` docs
+- mv `stack path --local-hpc-root` docs/hpc
 
 deploy:
   provider: pages # speziell für GitHub Pages
