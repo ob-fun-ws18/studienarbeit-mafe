@@ -24,6 +24,7 @@ dependencies:
 - network
 - containers
 - regex-pcre-builtin
+- split
 
 library:
   source-dirs: src

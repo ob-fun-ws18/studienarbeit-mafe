@@ -5,6 +5,7 @@ module Client (
     ) where
 
 import Text.Regex.PCRE
+import Data.List.Split
 import User
 
 data Msg = Plain String
@@ -12,6 +13,7 @@ data Msg = Plain String
         | User String String
         | PrivMsg String String
         | Join String
+        | JoinMulti [String]
         | Part String String
         | Ping String
         | IsOn [String]
@@ -34,7 +36,7 @@ parseCommand "USER " after = User user $ tail name
               user = before =~ "^\\S+"
 parseCommand "PRIVMSG " after = PrivMsg (head groups) msg
         where (_, _, msg, groups) = after =~ "^(\\S+)\\s:" :: (String, String, String, [String])
-parseCommand "JOIN " channel = Join channel
+parseCommand "JOIN " channel = JoinMulti $ splitOn "," channel
 parseCommand "PART " after
         | after =~ "^(\\S+)\\s:" = Part (head groups) msg
         | otherwise = Part after ""
