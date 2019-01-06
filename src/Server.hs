@@ -72,6 +72,10 @@ handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Part channel
     sendToAllUsers users members $ buildMsg user msg
     let new_channels = Map.insert channel (filter ((/=) nick) members) channels
     return (users, new_channels)
+handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(IsOn nicks)) = do
+    let usersOn = filter (\x -> Map.member x users) nicks
+    sendToUser users nick $ buildMsg user (IsOn usersOn)
+    return (users, channels)
 handleEvent users channels _ = do
     return (users, channels)
 

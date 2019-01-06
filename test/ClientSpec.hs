@@ -19,3 +19,7 @@ spec = describe "parseMsg" $ do
         parseMsg "JOIN #tardis" `shouldBe` Join "#tardis"
     it "parses PART message" $
         parseMsg "PART #tardis :Off to save Rory" `shouldBe` Part "#tardis" "Off to save Rory"
+    it "parses ISON message with multiple users" $
+        parseMsg "ISON abc def" `shouldBe` IsOn ["abc", "def"]
+    it "parses ISON message with one user" $
+        parseMsg "ISON abc" `shouldBe` IsOn ["abc"]
