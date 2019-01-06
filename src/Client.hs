@@ -14,6 +14,7 @@ data Msg = Plain String
         | Join String
         | Part String String
         | Ping String
+        | Quit String
         | IsOn [String]
     deriving (Show, Eq)
 
@@ -21,6 +22,7 @@ buildMsg :: User -> Msg -> String
 buildMsg user (PrivMsg receiver msg) = ":" ++ toString user ++ " PRIVMSG " ++ receiver ++ " :" ++ msg
 buildMsg user (Join channel) = ":" ++ toString user ++ " JOIN " ++ channel
 buildMsg user (Part channel msg) = ":" ++ toString user ++ " PART " ++ channel ++ " :" ++ msg
+buildMsg user (Quit msg) = ":" ++ toString user ++ " QUIT :" ++ msg
 buildMsg (FullUser nick _ _) (IsOn users) = ":localhost 303 " ++ nick ++ " :" ++ unwords users
 
 parseMsg :: String -> Msg
@@ -40,5 +42,7 @@ parseCommand "PART " after
         | otherwise = Part after ""
         where (_, _, msg, groups) = after =~ "^(\\S+)\\s:" :: (String, String, String, [String])
 parseCommand "PING " server = Ping server
+parseCommand "QUIT " after = Quit msg
+        where msg = tail after
 parseCommand "ISON " after = IsOn $ words after
 parseCommand cmd after = Plain (cmd ++ after)
