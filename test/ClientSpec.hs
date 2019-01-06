@@ -16,7 +16,9 @@ spec = describe "parseMsg" $ do
     it "parses PRIVMSG to user" $
         parseMsg "PRIVMSG rory :Hello..." `shouldBe` PrivMsg "rory" "Hello..."
     it "parses JOIN message" $
-        parseMsg "JOIN #tardis" `shouldBe` Join "#tardis"
+        parseMsg "JOIN #tardis" `shouldBe` JoinMulti ["#tardis"]
+    it "parses JOIN message with multiple channels" $
+        parseMsg "JOIN #tardis,#abc,#def" `shouldBe` JoinMulti ["#tardis", "#abc", "#def"]
     it "parses PART message" $
         parseMsg "PART #tardis :Off to save Rory" `shouldBe` Part "#tardis" "Off to save Rory"
     it "parses ISON message with multiple users" $
