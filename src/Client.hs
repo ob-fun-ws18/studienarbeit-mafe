@@ -21,6 +21,7 @@ buildMsg :: User -> Msg -> String
 buildMsg user (PrivMsg receiver msg) = ":" ++ toString user ++ " PRIVMSG " ++ receiver ++ " :" ++ msg
 buildMsg user (Join channel) = ":" ++ toString user ++ " JOIN " ++ channel
 buildMsg user (Part channel msg) = ":" ++ toString user ++ " PART " ++ channel ++ " :" ++ msg
+buildMsg user (Quit msg) = ":" ++ toString user ++ " QUIT :" ++ msg
 
 parseMsg :: String -> Msg
 parseMsg str = parseCommand cmd after

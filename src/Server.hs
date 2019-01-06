@@ -73,9 +73,12 @@ handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Part channel
     let new_channels = Map.insert channel (filter ((/=) nick) members) channels
     return (users, new_channels)
 handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Quit _)) = do
-    print "Closing connection"
-    hClose (users ! nick)
-    return (users , channels)
+    let hdl = users ! nick
+        new_users = Map.delete nick users
+        new_channels = Map.map (filter (nick /=)) channels
+    hClose hdl
+    sendToAllUsers users (Map.keys new_users) (buildMsg user msg)
+    return (new_users , new_channels)
 handleEvent users channels _ = do
     return (users, channels)
 
