@@ -72,6 +72,10 @@ handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Part channel
     sendToAllUsers users members $ buildMsg user msg
     let new_channels = Map.insert channel (filter ((/=) nick) members) channels
     return (users, new_channels)
+handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Quit _)) = do
+    print "Closing connection"
+    hClose (users ! nick)
+    return (users , channels)
 handleEvent users channels _ = do
     return (users, channels)
 
@@ -89,17 +93,24 @@ startConn (sock, _) chan = do
     hdl <- socketToHandle sock ReadWriteMode
     hSetBuffering hdl NoBuffering
     loopConn hdl chan NoUser
-    hClose hdl
 
 loopConn :: Handle -> Chan Event -> User -> IO ()
 loopConn hdl chan user = do
-    line <- hGetLine hdl
-    let msg = parseMsg $ init line
-        (new_user, event) = handleMsg hdl user msg
-    putStrLn ("\n" ++ line)
-    putStrLn $ show msg
-    when (isJust event) (writeChan chan $ fromJust event)
-    loopConn hdl chan new_user
+    eof <- hIsEOF hdl
+    if eof then do
+        writeChan chan $ ClientMsg user $ Quit "Client lost connection."
+    else do
+        line <- hGetLine hdl
+        let msg = parseMsg $ init line
+            (new_user, event) = handleMsg hdl user msg
+        putStrLn ("\n" ++ line)
+        putStrLn $ show msg
+        when (isJust event) (writeChan chan $ fromJust event)
+        when (not (isFinalMsg msg)) (loopConn hdl chan new_user)
+
+isFinalMsg :: Msg -> Bool
+isFinalMsg (Quit _) = True
+isFinalMsg _ = False
 
 handleMsg :: Handle -> User -> Msg -> (User, Maybe Event)
 handleMsg _ NoUser (Nick nick) = (NickUser nick, Nothing)
