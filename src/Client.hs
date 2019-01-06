@@ -14,6 +14,7 @@ data Msg = Plain String
         | Join String
         | Part String String
         | Ping String
+        | IsOn [String]
     deriving (Show, Eq)
 
 buildMsg :: User -> Msg -> String
@@ -38,4 +39,5 @@ parseCommand "PART " after
         | otherwise = Part after ""
         where (_, _, msg, groups) = after =~ "^(\\S+)\\s:" :: (String, String, String, [String])
 parseCommand "PING " server = Ping server
+parseCommand "ISON " after = IsOn $ words after
 parseCommand cmd after = Plain (cmd ++ after)
