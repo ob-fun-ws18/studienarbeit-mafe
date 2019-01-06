@@ -2,7 +2,8 @@
 
 _Marita Segl, Felix Maurer_
 
-[Documentation](https://ob-fun-ws18.github.io/studienarbeit-mafe/index.html)
+[Documentation](https://ob-fun-ws18.github.io/studienarbeit-mafe/index.html) |
+[Coverage](https://ob-fun-ws18.github.io/studienarbeit-mafe/hpc/index.html)
 
 ## How to build
 ```sh
@@ -17,5 +18,8 @@ stack exec IRCServer-exe
 ## Responsibilities
 ### Marita Segl
 - Parser
+- Behandlung der Events
+- Build/Travis
 ### Felix Maurer
 - Grundlegende Server-Struktur
+- Behandlung der Events
