@@ -78,7 +78,13 @@ mainServer chan users channels = do
     (new_users, new_channels) <- handleEvent users channels event
     mainServer chan new_users new_channels
 
-handleEvent :: Users -> Channels -> Event -> IO (Users, Channels)
+-- |This function contains the main logic of how to react to the different events.
+-- It processes the event, alters the users and the channel information where neccessary
+-- and sends responses to the clients.
+handleEvent :: Users                -- ^The current users
+            -> Channels             -- ^The current channel information
+            -> Event                -- ^The event received from the client
+            -> IO (Users, Channels) -- ^It returns the new state of users and channels
 handleEvent users channels (NewUser user@(FullUser nick username name) hdl) = do
     let new_users = Map.insert nick hdl users
     hPutStrLn hdl (":localhost 001 " ++ nick ++ " :Welcome to the Internet Relay Network " ++ toString user)
