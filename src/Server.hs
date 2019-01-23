@@ -1,5 +1,19 @@
+{-|
+Module: Server
+Description: Connection handling
+
+This module contains functions for the handling of connections between client
+and server.
+-}
 module Server (
     startServer
+    , acceptConnections
+    , mainServer
+    , handleEvent
+    , sendToUser
+    , sendToAllUsers
+    , startConn
+    , loopConn
 ) where
 
 import Network.Socket
@@ -24,7 +38,10 @@ type Channel = String
 type Users = (Map.Map String Handle)
 type Channels = (Map.Map String [String])
 
-startServer :: PortNumber -> IO ()
+-- |This function sets up the listening socket, starts the main server, and starts
+-- a loop for accepting connections.
+startServer :: PortNumber -- ^ The port that should accept new connections
+            -> IO ()
 startServer port = do
     sock <- socket AF_INET Stream 0
     setSocketOption sock ReuseAddr 1
@@ -34,7 +51,11 @@ startServer port = do
     forkIO (mainServer chan Map.empty Map.empty)
     acceptConnections sock chan
 
-acceptConnections :: Socket -> Chan Event -> IO ()
+-- |This function accepts new connections from clients and starts the communication
+-- with them in a new thread.
+acceptConnections :: Socket     -- ^The listening socket
+                  -> Chan Event -- ^The channel to communicate with the main server
+                  -> IO ()
 acceptConnections sock chan = do
     conn <- accept sock
     forkIO (startConn conn chan)
