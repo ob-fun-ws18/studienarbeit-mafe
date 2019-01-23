@@ -6,7 +6,10 @@ This module contains functions for the handling of connections between client
 and server.
 -}
 module Server (
-    startServer
+      Event(..)
+    , Users
+    , Channels
+    , startServer
     , acceptConnections
     , mainServer
     , handleEvent
@@ -29,13 +32,14 @@ import Data.Foldable
 import Client
 import User
 
-data Event = ClientMsg User Msg
-        | NewUser User Handle
+-- |An event that should be handled by the main server
+data Event = ClientMsg User Msg -- ^A parsed message from a client
+        | NewUser User Handle   -- ^A new user can bea reached via the given handle
     deriving Show
 
-type Channel = String
-
+-- |This type maps from the nicknames to the handles to the client.
 type Users = (Map.Map String Handle)
+-- |This type maps channel names to the nicknames of the users in the channel.
 type Channels = (Map.Map String [String])
 
 -- |This function sets up the listening socket, starts the main server, and starts
