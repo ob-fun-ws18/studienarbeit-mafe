@@ -13,7 +13,7 @@ module User (
 data User = FullUser String String String   -- ^User with nickname, username, full name
         | NickUser String                   -- ^User with nickname
         | NoUser                            -- ^User without information
-    deriving Show
+    deriving (Show, Eq)
 
 -- |Converts the user information into the identifying string
 toString :: User -> String
