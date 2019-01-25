@@ -1,0 +1,89 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-|
+<span class="lineno">    2 </span>Module: Client
+<span class="lineno">    3 </span>Description: Message parser
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>This module contains functions to parse and build Messages.
+<span class="lineno">    6 </span>-}
+<span class="lineno">    7 </span>module Client (
+<span class="lineno">    8 </span>      Msg(..)
+<span class="lineno">    9 </span>    , parseMsg
+<span class="lineno">   10 </span>    , buildMsg
+<span class="lineno">   11 </span>    , parseCommand
+<span class="lineno">   12 </span>    ) where
+<span class="lineno">   13 </span>
+<span class="lineno">   14 </span>import Text.Regex.PCRE
+<span class="lineno">   15 </span>import Data.List.Split
+<span class="lineno">   16 </span>import User
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>-- |Messages that can be received from the client
+<span class="lineno">   19 </span>data Msg = Plain String
+<span class="lineno">   20 </span>        | Nick String                   -- ^Nickname message with the new nick
+<span class="lineno">   21 </span>        | User String String            -- ^User message with username and full name
+<span class="lineno">   22 </span>        | PrivMsg String String         -- ^Private message with receiver and content
+<span class="lineno">   23 </span>        | Join String                   -- ^Join message with the channel
+<span class="lineno">   24 </span>        | JoinMulti [String]            -- ^Join message with multiple channels
+<span class="lineno">   25 </span>        | Part String String            -- ^Part message with the channel name and message
+<span class="lineno">   26 </span>        | Ping String                   -- ^Ping message
+<span class="lineno">   27 </span>        | Quit String                   -- ^Quit with message
+<span class="lineno">   28 </span>        | IsOn [String]                 -- ^Is on message with the nick names
+<span class="lineno">   29 </span>    deriving (<span class="decl"><span class="nottickedoff">Show</span></span>, <span class="decl"><span class="istickedoff">Eq</span></span>)
+<span class="lineno">   30 </span>
+<span class="lineno">   31 </span>-- |This function builds the messages for the client.
+<span class="lineno">   32 </span>buildMsg :: User        -- ^The sender of the message
+<span class="lineno">   33 </span>         -&gt; Msg         -- ^The message
+<span class="lineno">   34 </span>         -&gt; String      -- ^Message to send to the client
+<span class="lineno">   35 </span><span class="decl"><span class="istickedoff">buildMsg user (PrivMsg receiver msg) = &quot;:&quot; ++ toString user ++ &quot; PRIVMSG &quot; ++ receiver ++ &quot; :&quot; ++ msg</span>
+<span class="lineno">   36 </span><span class="spaces"></span><span class="istickedoff">buildMsg user (Join channel) = &quot;:&quot; ++ toString user ++ &quot; JOIN &quot; ++ channel</span>
+<span class="lineno">   37 </span><span class="spaces"></span><span class="istickedoff">buildMsg user (Part channel msg) = &quot;:&quot; ++ toString user ++ &quot; PART &quot; ++ channel ++ &quot; :&quot; ++ msg</span>
+<span class="lineno">   38 </span><span class="spaces"></span><span class="istickedoff">buildMsg user (Quit msg) = &quot;:&quot; ++ toString user ++ &quot; QUIT :&quot; ++ msg</span>
+<span class="lineno">   39 </span><span class="spaces"></span><span class="istickedoff">buildMsg (FullUser nick _ _) (IsOn users) = &quot;:localhost 303 &quot; ++ nick ++ &quot; :&quot; ++ unwords users</span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>-- |This function parses the messages from the client.
+<span class="lineno">   42 </span>parseMsg :: String      -- ^Message from the client
+<span class="lineno">   43 </span>         -&gt; Msg         -- ^Parsed message
+<span class="lineno">   44 </span><span class="decl"><span class="istickedoff">parseMsg str = parseCommand cmd after</span>
+<span class="lineno">   45 </span><span class="spaces">        </span><span class="istickedoff">where (_, cmd, after) = str =~ &quot;^[A-Z]+ &quot; :: (String, String, String)</span></span>
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>-- |This function parses the additional information from the message.
+<span class="lineno">   48 </span>parseCommand :: String  -- ^Type of the message
+<span class="lineno">   49 </span>             -&gt; String  -- ^Remaining message
+<span class="lineno">   50 </span>             -&gt; Msg     -- ^Parsed message
+<span class="lineno">   51 </span><span class="decl"><span class="istickedoff">parseCommand &quot;NICK &quot; user = Nick user</span>
+<span class="lineno">   52 </span><span class="spaces"></span><span class="istickedoff">parseCommand &quot;USER &quot; after = User user $ tail name</span>
+<span class="lineno">   53 </span><span class="spaces">        </span><span class="istickedoff">where (before, name, _) = after =~ &quot;:.*$&quot; :: (String, String, String)</span>
+<span class="lineno">   54 </span><span class="spaces">              </span><span class="istickedoff">user = before =~ &quot;^\\S+&quot;</span>
+<span class="lineno">   55 </span><span class="spaces"></span><span class="istickedoff">parseCommand &quot;PRIVMSG &quot; after = PrivMsg (head groups) msg</span>
+<span class="lineno">   56 </span><span class="spaces">        </span><span class="istickedoff">where (_, _, msg, groups) = after =~ &quot;^(\\S+)\\s:&quot; :: (String, String, String, [String])</span>
+<span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff">parseCommand &quot;JOIN &quot; channel = JoinMulti $ splitOn &quot;,&quot; channel</span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">parseCommand &quot;PART &quot; after</span>
+<span class="lineno">   59 </span><span class="spaces">        </span><span class="istickedoff">| after =~ &quot;^(\\S+)\\s:&quot; = Part (head groups) msg</span>
+<span class="lineno">   60 </span><span class="spaces">        </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = Part after &quot;&quot;</span>
+<span class="lineno">   61 </span><span class="spaces">        </span><span class="istickedoff">where (_, _, msg, groups) = after =~ &quot;^(\\S+)\\s:&quot; :: (String, String, String, [String])</span>
+<span class="lineno">   62 </span><span class="spaces"></span><span class="istickedoff">parseCommand &quot;PING &quot; server = Ping server</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff">parseCommand &quot;QUIT &quot; after = Quit msg</span>
+<span class="lineno">   64 </span><span class="spaces">        </span><span class="istickedoff">where msg = tail after</span>
+<span class="lineno">   65 </span><span class="spaces"></span><span class="istickedoff">parseCommand &quot;ISON &quot; after = IsOn $ words after</span>
+<span class="lineno">   66 </span><span class="spaces"></span><span class="istickedoff">parseCommand cmd after = Plain (cmd ++ after)</span></span>
+
+</pre>
+</body>
+</html>

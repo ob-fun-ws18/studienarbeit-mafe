@@ -1,0 +1,209 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-|
+<span class="lineno">    2 </span>Module: Server
+<span class="lineno">    3 </span>Description: Connection handling
+<span class="lineno">    4 </span>
+<span class="lineno">    5 </span>This module contains functions for the handling of connections between client
+<span class="lineno">    6 </span>and server.
+<span class="lineno">    7 </span>-}
+<span class="lineno">    8 </span>module Server (
+<span class="lineno">    9 </span>      Event(..)
+<span class="lineno">   10 </span>    , Users
+<span class="lineno">   11 </span>    , Channels
+<span class="lineno">   12 </span>    , startServer
+<span class="lineno">   13 </span>    , acceptConnections
+<span class="lineno">   14 </span>    , mainServer
+<span class="lineno">   15 </span>    , handleEvent
+<span class="lineno">   16 </span>    , sendToUser
+<span class="lineno">   17 </span>    , sendToAllUsers
+<span class="lineno">   18 </span>    , startConn
+<span class="lineno">   19 </span>    , loopConn
+<span class="lineno">   20 </span>    , isFinalMsg
+<span class="lineno">   21 </span>    , handleMsg
+<span class="lineno">   22 </span>) where
+<span class="lineno">   23 </span>
+<span class="lineno">   24 </span>import Network.Socket
+<span class="lineno">   25 </span>import System.IO
+<span class="lineno">   26 </span>import Control.Concurrent
+<span class="lineno">   27 </span>import Data.List
+<span class="lineno">   28 </span>import Data.Maybe
+<span class="lineno">   29 </span>import qualified Data.Map as Map
+<span class="lineno">   30 </span>import Data.Map((!))
+<span class="lineno">   31 </span>import Control.Monad
+<span class="lineno">   32 </span>import Data.Foldable
+<span class="lineno">   33 </span>
+<span class="lineno">   34 </span>import Client
+<span class="lineno">   35 </span>import User
+<span class="lineno">   36 </span>
+<span class="lineno">   37 </span>-- |An event that should be handled by the main server
+<span class="lineno">   38 </span>data Event = ClientMsg User Msg -- ^A parsed message from a client
+<span class="lineno">   39 </span>        | NewUser User Handle   -- ^A new user can bea reached via the given handle
+<span class="lineno">   40 </span>    deriving (<span class="decl"><span class="nottickedoff">Show</span></span>, <span class="decl"><span class="istickedoff">Eq</span></span>)
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>-- |This type maps from the nicknames to the handles to the client.
+<span class="lineno">   43 </span>type Users = (Map.Map String Handle)
+<span class="lineno">   44 </span>-- |This type maps channel names to the nicknames of the users in the channel.
+<span class="lineno">   45 </span>type Channels = (Map.Map String [String])
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>-- |This function sets up the listening socket, starts the main server, and starts
+<span class="lineno">   48 </span>-- a loop for accepting connections.
+<span class="lineno">   49 </span>startServer :: PortNumber -- ^ The port that should accept new connections
+<span class="lineno">   50 </span>            -&gt; IO ()
+<span class="lineno">   51 </span><span class="decl"><span class="nottickedoff">startServer port = do</span>
+<span class="lineno">   52 </span><span class="spaces">    </span><span class="nottickedoff">sock &lt;- socket AF_INET Stream 0</span>
+<span class="lineno">   53 </span><span class="spaces">    </span><span class="nottickedoff">setSocketOption sock ReuseAddr 1</span>
+<span class="lineno">   54 </span><span class="spaces">    </span><span class="nottickedoff">bind sock (SockAddrInet port iNADDR_ANY)</span>
+<span class="lineno">   55 </span><span class="spaces">    </span><span class="nottickedoff">listen sock 2</span>
+<span class="lineno">   56 </span><span class="spaces">    </span><span class="nottickedoff">chan &lt;- newChan</span>
+<span class="lineno">   57 </span><span class="spaces">    </span><span class="nottickedoff">forkIO (mainServer chan Map.empty Map.empty)</span>
+<span class="lineno">   58 </span><span class="spaces">    </span><span class="nottickedoff">acceptConnections sock chan</span></span>
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>-- |This function accepts new connections from clients and starts the communication
+<span class="lineno">   61 </span>-- with them in a new thread.
+<span class="lineno">   62 </span>acceptConnections :: Socket     -- ^The listening socket
+<span class="lineno">   63 </span>                  -&gt; Chan Event -- ^The channel to communicate with the main server
+<span class="lineno">   64 </span>                  -&gt; IO ()
+<span class="lineno">   65 </span><span class="decl"><span class="nottickedoff">acceptConnections sock chan = do</span>
+<span class="lineno">   66 </span><span class="spaces">    </span><span class="nottickedoff">conn &lt;- accept sock</span>
+<span class="lineno">   67 </span><span class="spaces">    </span><span class="nottickedoff">forkIO (startConn conn chan)</span>
+<span class="lineno">   68 </span><span class="spaces">    </span><span class="nottickedoff">acceptConnections sock chan</span></span>
+<span class="lineno">   69 </span>
+<span class="lineno">   70 </span>-- |The main server waits for events that the clients generate. It also keeps track
+<span class="lineno">   71 </span>-- of the connected users and the channels. It modifies the states and sends replys
+<span class="lineno">   72 </span>-- to the clients.
+<span class="lineno">   73 </span>mainServer :: Chan Event -- ^The channels to receive events from the clients
+<span class="lineno">   74 </span>           -&gt; Users      -- ^The currently connected users with their handles
+<span class="lineno">   75 </span>           -&gt; Channels   -- ^The currently available channels with their users
+<span class="lineno">   76 </span>           -&gt; IO ()
+<span class="lineno">   77 </span><span class="decl"><span class="nottickedoff">mainServer chan users channels = do</span>
+<span class="lineno">   78 </span><span class="spaces">    </span><span class="nottickedoff">event &lt;- readChan chan</span>
+<span class="lineno">   79 </span><span class="spaces">    </span><span class="nottickedoff">print event</span>
+<span class="lineno">   80 </span><span class="spaces">    </span><span class="nottickedoff">(new_users, new_channels) &lt;- handleEvent users channels event</span>
+<span class="lineno">   81 </span><span class="spaces">    </span><span class="nottickedoff">mainServer chan new_users new_channels</span></span>
+<span class="lineno">   82 </span>
+<span class="lineno">   83 </span>-- |This function contains the main logic of how to react to the different events.
+<span class="lineno">   84 </span>-- It processes the event, alters the users and the channel information where neccessary
+<span class="lineno">   85 </span>-- and sends responses to the clients.
+<span class="lineno">   86 </span>handleEvent :: Users                -- ^The current users
+<span class="lineno">   87 </span>            -&gt; Channels             -- ^The current channel information
+<span class="lineno">   88 </span>            -&gt; Event                -- ^The event received from the client
+<span class="lineno">   89 </span>            -&gt; IO (Users, Channels) -- ^It returns the new state of users and channels
+<span class="lineno">   90 </span><span class="decl"><span class="istickedoff">handleEvent users channels (NewUser user@(FullUser nick username name) hdl) = do</span>
+<span class="lineno">   91 </span><span class="spaces">    </span><span class="istickedoff">let new_users = Map.insert nick <span class="nottickedoff">hdl</span> users</span>
+<span class="lineno">   92 </span><span class="spaces">    </span><span class="istickedoff">hPutStrLn hdl (&quot;:localhost 001 &quot; ++ nick ++ &quot; :Welcome to the Internet Relay Network &quot; ++ toString user)</span>
+<span class="lineno">   93 </span><span class="spaces">    </span><span class="istickedoff">return (new_users, channels)</span>
+<span class="lineno">   94 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg user@(FullUser nick _ _) (Ping server)) = do</span>
+<span class="lineno">   95 </span><span class="spaces">    </span><span class="istickedoff">sendToUser users nick &quot;PONG localhost&quot;</span>
+<span class="lineno">   96 </span><span class="spaces">    </span><span class="istickedoff">return (users, channels)</span>
+<span class="lineno">   97 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(PrivMsg receiver _)) = do</span>
+<span class="lineno">   98 </span><span class="spaces">    </span><span class="istickedoff">if head receiver == '#'</span>
+<span class="lineno">   99 </span><span class="spaces">        </span><span class="istickedoff">then do</span>
+<span class="lineno">  100 </span><span class="spaces">            </span><span class="istickedoff">let receivers = filter (nick /=) (Map.findWithDefault <span class="nottickedoff">[]</span> receiver channels)</span>
+<span class="lineno">  101 </span><span class="spaces">            </span><span class="istickedoff">sendToAllUsers users receivers (buildMsg user msg)</span>
+<span class="lineno">  102 </span><span class="spaces">        </span><span class="istickedoff">else sendToUser users receiver $ buildMsg user msg</span>
+<span class="lineno">  103 </span><span class="spaces">    </span><span class="istickedoff">return (users, channels)</span>
+<span class="lineno">  104 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Join channel)) = do</span>
+<span class="lineno">  105 </span><span class="spaces">    </span><span class="istickedoff">let members = nick : Map.findWithDefault [] channel channels</span>
+<span class="lineno">  106 </span><span class="spaces">        </span><span class="istickedoff">new_channels = Map.insert channel members channels</span>
+<span class="lineno">  107 </span><span class="spaces">    </span><span class="istickedoff">sendToAllUsers users members $ buildMsg user msg</span>
+<span class="lineno">  108 </span><span class="spaces">    </span><span class="istickedoff">return (users, new_channels)</span>
+<span class="lineno">  109 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg _ (JoinMulti [])) = return (users, channels)</span>
+<span class="lineno">  110 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg user msg@(JoinMulti (c : cs))) = do</span>
+<span class="lineno">  111 </span><span class="spaces">    </span><span class="istickedoff">(new_users, new_channels) &lt;- handleEvent users channels (ClientMsg user (Join c))</span>
+<span class="lineno">  112 </span><span class="spaces">    </span><span class="istickedoff">handleEvent new_users new_channels (ClientMsg user (JoinMulti cs))</span>
+<span class="lineno">  113 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Part channel _)) = do</span>
+<span class="lineno">  114 </span><span class="spaces">    </span><span class="istickedoff">let members = Map.findWithDefault <span class="nottickedoff">[]</span> channel channels</span>
+<span class="lineno">  115 </span><span class="spaces">    </span><span class="istickedoff">sendToAllUsers users members $ buildMsg user msg</span>
+<span class="lineno">  116 </span><span class="spaces">    </span><span class="istickedoff">let new_channels = Map.insert channel (filter (nick /=) members) channels</span>
+<span class="lineno">  117 </span><span class="spaces">    </span><span class="istickedoff">return (users, new_channels)</span>
+<span class="lineno">  118 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(Quit _)) = do</span>
+<span class="lineno">  119 </span><span class="spaces">    </span><span class="istickedoff">let hdl = users ! nick</span>
+<span class="lineno">  120 </span><span class="spaces">        </span><span class="istickedoff">new_users = Map.delete nick users</span>
+<span class="lineno">  121 </span><span class="spaces">        </span><span class="istickedoff">new_channels = Map.map (filter (nick /=)) channels</span>
+<span class="lineno">  122 </span><span class="spaces">    </span><span class="istickedoff">hClose hdl</span>
+<span class="lineno">  123 </span><span class="spaces">    </span><span class="istickedoff">sendToAllUsers users (Map.keys new_users) (buildMsg user msg)</span>
+<span class="lineno">  124 </span><span class="spaces">    </span><span class="istickedoff">return (new_users , new_channels)</span>
+<span class="lineno">  125 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels (ClientMsg user@(FullUser nick _ _) msg@(IsOn nicks)) = do</span>
+<span class="lineno">  126 </span><span class="spaces">    </span><span class="istickedoff">let usersOn = filter (`Map.member` users) nicks</span>
+<span class="lineno">  127 </span><span class="spaces">    </span><span class="istickedoff">sendToUser users nick $ buildMsg user (IsOn usersOn)</span>
+<span class="lineno">  128 </span><span class="spaces">    </span><span class="istickedoff">return (users, channels)</span>
+<span class="lineno">  129 </span><span class="spaces"></span><span class="istickedoff">handleEvent users channels _ = return (users, channels)</span></span>
+<span class="lineno">  130 </span>
+<span class="lineno">  131 </span>-- |This function sends a message to a specified user.
+<span class="lineno">  132 </span>sendToUser :: Users  -- ^The map of users to look up the correct handle
+<span class="lineno">  133 </span>           -&gt; String -- ^The nickname of the user to send to
+<span class="lineno">  134 </span>           -&gt; String -- ^The message to send
+<span class="lineno">  135 </span>           -&gt; IO ()
+<span class="lineno">  136 </span><span class="decl"><span class="istickedoff">sendToUser users nick = hPutStrLn (users ! nick)</span></span>
+<span class="lineno">  137 </span>
+<span class="lineno">  138 </span>-- |This function sends the same message to many users.
+<span class="lineno">  139 </span>sendToAllUsers :: Users    -- ^The map of users to look up the correct handles
+<span class="lineno">  140 </span>               -&gt; [String] -- ^The nicknames of the users to send to
+<span class="lineno">  141 </span>               -&gt; String   -- ^The message to send
+<span class="lineno">  142 </span>               -&gt; IO ()
+<span class="lineno">  143 </span><span class="decl"><span class="istickedoff">sendToAllUsers _ [] _ = return <span class="nottickedoff">()</span></span>
+<span class="lineno">  144 </span><span class="spaces"></span><span class="istickedoff">sendToAllUsers users receivers msg = do</span>
+<span class="lineno">  145 </span><span class="spaces">    </span><span class="istickedoff">sendToUser users (head receivers) msg</span>
+<span class="lineno">  146 </span><span class="spaces">    </span><span class="istickedoff">sendToAllUsers users (tail receivers) msg</span></span>
+<span class="lineno">  147 </span>
+<span class="lineno">  148 </span>-- |This function sets up the connection to a client and starts the loop that handles
+<span class="lineno">  149 </span>-- the further communication.
+<span class="lineno">  150 </span>startConn :: (Socket, SockAddr) -- ^The socket information for the client
+<span class="lineno">  151 </span>          -&gt; Chan Event         -- ^The channel to communictate with the main server
+<span class="lineno">  152 </span>          -&gt; IO ()
+<span class="lineno">  153 </span><span class="decl"><span class="nottickedoff">startConn (sock, _) chan = do</span>
+<span class="lineno">  154 </span><span class="spaces">    </span><span class="nottickedoff">hdl &lt;- socketToHandle sock ReadWriteMode</span>
+<span class="lineno">  155 </span><span class="spaces">    </span><span class="nottickedoff">hSetBuffering hdl NoBuffering</span>
+<span class="lineno">  156 </span><span class="spaces">    </span><span class="nottickedoff">loopConn hdl chan NoUser</span></span>
+<span class="lineno">  157 </span>
+<span class="lineno">  158 </span>-- |This function handles the communication from the client to the server. It reads
+<span class="lineno">  159 </span>-- the messages, parses them, and acts accordingly.
+<span class="lineno">  160 </span>loopConn :: Handle     -- ^The handle to receive data from the client
+<span class="lineno">  161 </span>         -&gt; Chan Event -- ^The channel to communicate with the main server
+<span class="lineno">  162 </span>         -&gt; User       -- ^The data of the user that is handled by this connection
+<span class="lineno">  163 </span>         -&gt; IO ()
+<span class="lineno">  164 </span><span class="decl"><span class="nottickedoff">loopConn hdl chan user = do</span>
+<span class="lineno">  165 </span><span class="spaces">    </span><span class="nottickedoff">eof &lt;- hIsEOF hdl</span>
+<span class="lineno">  166 </span><span class="spaces">    </span><span class="nottickedoff">if eof then</span>
+<span class="lineno">  167 </span><span class="spaces">        </span><span class="nottickedoff">writeChan chan $ ClientMsg user $ Quit &quot;Client lost connection.&quot;</span>
+<span class="lineno">  168 </span><span class="spaces">    </span><span class="nottickedoff">else do</span>
+<span class="lineno">  169 </span><span class="spaces">        </span><span class="nottickedoff">line &lt;- hGetLine hdl</span>
+<span class="lineno">  170 </span><span class="spaces">        </span><span class="nottickedoff">let msg = parseMsg $ init line</span>
+<span class="lineno">  171 </span><span class="spaces">            </span><span class="nottickedoff">(new_user, event) = handleMsg hdl user msg</span>
+<span class="lineno">  172 </span><span class="spaces">        </span><span class="nottickedoff">putStrLn (&quot;\n&quot; ++ line)</span>
+<span class="lineno">  173 </span><span class="spaces">        </span><span class="nottickedoff">print msg</span>
+<span class="lineno">  174 </span><span class="spaces">        </span><span class="nottickedoff">Data.Foldable.forM_ event (writeChan chan)</span>
+<span class="lineno">  175 </span><span class="spaces">        </span><span class="nottickedoff">unless (isFinalMsg msg) (loopConn hdl chan new_user)</span></span>
+<span class="lineno">  176 </span>
+<span class="lineno">  177 </span>isFinalMsg :: Msg -&gt; Bool
+<span class="lineno">  178 </span><span class="decl"><span class="istickedoff">isFinalMsg (Quit _) = True</span>
+<span class="lineno">  179 </span><span class="spaces"></span><span class="istickedoff">isFinalMsg _ = False</span></span>
+<span class="lineno">  180 </span>
+<span class="lineno">  181 </span>handleMsg :: Handle -&gt; User -&gt; Msg -&gt; (User, Maybe Event)
+<span class="lineno">  182 </span><span class="decl"><span class="istickedoff">handleMsg _ NoUser (Nick nick) = (NickUser nick, Nothing)</span>
+<span class="lineno">  183 </span><span class="spaces"></span><span class="istickedoff">handleMsg hdl (NickUser nick) (User username name) = (user, Just (NewUser user hdl))</span>
+<span class="lineno">  184 </span><span class="spaces">        </span><span class="istickedoff">where user = FullUser nick username name</span>
+<span class="lineno">  185 </span><span class="spaces"></span><span class="istickedoff">handleMsg _ user msg = (user, Just (ClientMsg user msg))</span></span>
+<span class="lineno">  186 </span>
+
+</pre>
+</body>
+</html>
