@@ -37,3 +37,14 @@ spec = describe "Server" $ do
             reply `shouldBe` ":localhost 001 nick :Welcome to the Internet Relay Network nick!user@localhost"
             Map.size new_users `shouldBe` 1
             new_channels `shouldBe` channels
+        it "handles a Pong event" $ withHandle $ \h -> do
+            let users = Map.insert "nick" h Map.empty
+                channels = Map.empty
+                msg = ClientMsg (FullUser "nick" "user" "name") (Ping "server")
+            pos <- hGetPosn h
+            (new_users, new_channels) <- handleEvent users channels msg
+            hSetPosn pos
+            reply <- hGetLine h
+            reply `shouldBe` "PONG localhost"
+            new_users `shouldBe` users
+            new_channels `shouldBe` channels
