@@ -134,3 +134,10 @@ spec = describe "Server" $ do
             reply2 `shouldBe` ":localhost 303 user2 :user1"
             new_users `shouldBe` users
             new_channels `shouldBe` channels
+        it "handels a Plain message (unknown message)" $ withHandle $ \h1 -> do
+            let users = Map.insert "user1" h1 Map.empty
+                channels = Map.empty
+                msg = ClientMsg (FullUser "user1" "user" "name") (Plain "CAP LS 302")
+            (new_users, new_channels) <- handleEvent users channels msg
+            new_users `shouldBe` users
+            new_channels `shouldBe` channels
