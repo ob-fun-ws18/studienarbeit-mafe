@@ -6,7 +6,7 @@ module User (
 data User = FullUser String String String
         | NickUser String
         | NoUser
-    deriving Show
+    deriving (Show, Eq)
 
 toString :: User -> String
 toString (FullUser nick user _) = nick ++ "!" ++ user ++ "@localhost"

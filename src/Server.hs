@@ -17,6 +17,8 @@ module Server (
     , sendToAllUsers
     , startConn
     , loopConn
+    , isFinalMsg
+    , handleMsg
 ) where
 
 import Network.Socket
@@ -35,7 +37,7 @@ import User
 -- |An event that should be handled by the main server
 data Event = ClientMsg User Msg -- ^A parsed message from a client
         | NewUser User Handle   -- ^A new user can bea reached via the given handle
-    deriving Show
+    deriving (Show, Eq)
 
 -- |This type maps from the nicknames to the handles to the client.
 type Users = (Map.Map String Handle)
