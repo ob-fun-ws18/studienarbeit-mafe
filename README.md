@@ -15,6 +15,11 @@ stack build
 stack exec IRCServer-exe
 ```
 
+The server has been tested with these clients:
+- irssi
+- HexChat
+- Textual
+
 ## Responsibilities
 ### Marita Segl
 - Parser
@@ -23,3 +28,4 @@ stack exec IRCServer-exe
 ### Felix Maurer
 - Grundlegende Server-Struktur
 - Behandlung der Events
+- Konzept und Helper für Test von Funktionen mit IO/Handles
