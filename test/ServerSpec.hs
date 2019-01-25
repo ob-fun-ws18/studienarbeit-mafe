@@ -88,7 +88,7 @@ spec = describe "Server" $ do
             length (new_channels ! "#channel") `shouldBe` 2
         it "handels a JOIN multi channels message" $ withHandle $ \h1 -> withHandle $ \h2 -> do
             let users = Map.insert "user1" h1 (Map.insert "user2" h2 Map.empty)
-                channels = Map.insert "#channel" ["user1"] (Map.insert "channel2" ["user1"] Map.empty) 
+                channels = Map.insert "#channel" ["user1"] (Map.insert "channel2" ["user1"] Map.empty)
                 msg = ClientMsg (FullUser "user2" "user" "name") (JoinMulti ["#channel", "#channel2"])
             pos1 <- hGetPosn h1
             pos2 <- hGetPosn h2
@@ -101,22 +101,20 @@ spec = describe "Server" $ do
             reply2 `shouldBe` ":user2!user@localhost JOIN #channel"
             new_users `shouldBe` users
             length (new_channels ! "#channel") `shouldBe` 2
-{-
         it "handels a PART message" $ withHandle $ \h1 -> withHandle $ \h2 -> do
             let users = Map.insert "user1" h1 (Map.insert "user2" h2 Map.empty)
-                channels = Map.insert "#channel" ["user1", "user2"] Map.empty 
-                msg = ClientMsg (FullUser "user2" "user" "name") (Part "#chanel" "bye")
+                channels = Map.insert "#channel" ["user1", "user2"] Map.empty
+                msg = ClientMsg (FullUser "user2" "user" "name") (Part "#channel" "bye")
             pos1 <- hGetPosn h1
             (new_users, new_channels) <- handleEvent users channels msg
             hSetPosn pos1
             reply1 <- hGetLine h1
-            reply1 `shouldBe` ":user2!user@localhost JOIN #channel"
+            reply1 `shouldBe` ":user2!user@localhost PART #channel :bye"
             new_users `shouldBe` users
-            new_channels `shouldBe` channels
--}
+            (new_channels ! "#channel") `shouldBe` ["user1"]
         it "handels a QUIT message" $ withHandle $ \h1 -> withHandle $ \h2 -> do
             let users = Map.insert "user1" h1 (Map.insert "user2" h2 Map.empty)
-                channels = Map.insert "#channel" ["user1", "user2"] Map.empty 
+                channels = Map.insert "#channel" ["user1", "user2"] Map.empty
                 msg = ClientMsg (FullUser "user2" "user" "name") (Quit "bye")
             pos1 <- hGetPosn h1
             (new_users, new_channels) <- handleEvent users channels msg
@@ -127,7 +125,7 @@ spec = describe "Server" $ do
             length (new_channels ! "#channel") `shouldBe` 1
         it "handels a IsOn message" $ withHandle $ \h1 -> withHandle $ \h2 -> do
             let users = Map.insert "user1" h1 (Map.insert "user2" h2 Map.empty)
-                channels = Map.empty 
+                channels = Map.empty
                 msg = ClientMsg (FullUser "user2" "user" "name") (IsOn ["user1"])
             pos2 <- hGetPosn h2
             (new_users, new_channels) <- handleEvent users channels msg
